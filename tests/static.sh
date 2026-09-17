@@ -61,6 +61,12 @@ for setting in "${documented_settings[@]}"; do
   grep --fixed-strings --quiet "$setting" README.yaml
 done
 
+grep --fixed-strings --quiet "/aws/ssm/compliance-management/automation/" account.tf
+if grep --fixed-strings --quiet '"/aws/ssm/automation/${local.system_name}"' account.tf; then
+  echo "Legacy generic Automation log group namespace is not allowed." >&2
+  exit 1
+fi
+
 for forbidden in \
   'SSM-SessionManagerRunShell' \
   'AWS-StartSSHSession' \

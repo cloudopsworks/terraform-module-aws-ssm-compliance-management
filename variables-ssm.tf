@@ -20,7 +20,7 @@
 #   automation_logging:
 #     enabled: true
 #     create_log_group: true
-#     log_group_name: /aws/ssm/automation/example
+#     log_group_name: /aws/ssm/compliance-management/automation/example
 #     retention_in_days: 365
 #     kms_key_id: null
 #     skip_destroy: false

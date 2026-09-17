@@ -136,8 +136,8 @@ usage: |-
     # Automation customer-script logging (Security Hub SSM.6).
     automation_logging:
       enabled: true                                # Configure both Automation logging service settings. Default: true
-      create_log_group: true                       # Create the CloudWatch Logs group. Default: true
-      # log_group_name: /aws/ssm/automation/example # Created or pre-existing group name. Default: /aws/ssm/automation/<system-name>
+      create_log_group: true                       # Create the namespaced group; set false when another module owns log-group lifecycle. Default: true
+      # log_group_name: /aws/ssm/compliance-management/automation/example # Created or pre-existing group name. Default uses the module-specific namespace shown here.
       retention_in_days: 365                       # CloudWatch retention when creating the group. Default: 365
       # kms_key_id: null                           # Optional KMS key ARN for CloudWatch Logs encryption.
       # skip_destroy: false                        # Retain the log group during destroy. Default: false
@@ -324,7 +324,7 @@ usage: |-
     #           Operation: [Install]
     #           RebootOption: [RebootIfNeeded]
     #         cloudwatch_output_enabled: true      # Optional Run Command CloudWatch output toggle.
-    #         cloudwatch_log_group_name: /aws/ssm/maintenance # Default: Automation log group name.
+    #         cloudwatch_log_group_name: /aws/ssm/maintenance # Default: the compliance Automation log group; this option references but does not create another group.
     #         notification_config:                 # Optional SNS Run Command notifications.
     #           notification_arn: arn:aws:sns:us-east-1:123456789012:ssm-notifications
     #           notification_events: [All]         # All, InProgress, Success, TimedOut, Cancelled, or Failed.
@@ -340,6 +340,12 @@ usage: |-
     name and path.
   - `settings.document_security.block_public_sharing` defaults to `true`. The service setting blocks new
     public shares; it does not unshare an existing document.
+  - The default Automation log group uses `/aws/ssm/compliance-management/automation/<system-name>`,
+    which is separate from the Session Manager module's `/aws/ssm/session-manager/audit-*` namespace.
+    To reuse a centrally managed group instead, set `settings.automation_logging.create_log_group = false`
+    and provide its name through `settings.automation_logging.log_group_name`.
+  - Maintenance Window `cloudwatch_log_group_name` overrides reference existing groups; this module only
+    creates the Automation group controlled by `settings.automation_logging.create_log_group`.
   - Maintenance Window tasks support `RUN_COMMAND` documents. They default to the AWS-managed
     `AmazonSSMMaintenanceWindowRole`; attach extra managed policies through
     `settings.maintenance.additional_policy_arns` when a task needs access to workload resources.

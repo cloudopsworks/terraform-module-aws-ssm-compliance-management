@@ -56,6 +56,11 @@ run "safe_defaults" {
   }
 
   assert {
+    condition     = startswith(aws_cloudwatch_log_group.automation[0].name, "/aws/ssm/compliance-management/automation/")
+    error_message = "The Automation log group must use the compliance-management namespace."
+  }
+
+  assert {
     condition     = length(aws_ssm_service_setting.block_public_document_sharing) == 1
     error_message = "Public SSM document sharing must be blocked by default."
   }
@@ -63,6 +68,29 @@ run "safe_defaults" {
   assert {
     condition     = length(aws_ssm_maintenance_window.this) == 0
     error_message = "Maintenance Windows must remain opt-in."
+  }
+}
+
+run "use_existing_automation_log_group" {
+  command = plan
+
+  variables {
+    settings = {
+      automation_logging = {
+        create_log_group = false
+        log_group_name   = "/platform/shared/ssm-automation"
+      }
+    }
+  }
+
+  assert {
+    condition     = length(aws_cloudwatch_log_group.automation) == 0
+    error_message = "The module must not create an Automation log group when create_log_group is false."
+  }
+
+  assert {
+    condition     = aws_ssm_service_setting.automation_log_group[0].setting_value == "/platform/shared/ssm-automation"
+    error_message = "Automation must reference the configured pre-existing log group."
   }
 }
 

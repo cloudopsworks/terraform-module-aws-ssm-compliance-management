@@ -31,7 +31,7 @@ locals {
   automation_logging_create_log_group = local.automation_logging_enabled && try(var.settings.automation_logging.create_log_group, true)
   automation_log_group_name = try(
     var.settings.automation_logging.log_group_name,
-    "/aws/ssm/automation/${local.system_name}"
+    "/aws/ssm/compliance-management/automation/${local.system_name}"
   )
 
   block_public_document_sharing = try(var.settings.document_security.block_public_sharing, true)
