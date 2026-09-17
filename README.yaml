@@ -113,6 +113,59 @@ usage: |-
   }
   ```
 
+  ### Adopt an existing Inventory association
+
+  AWS permits only one apply-all `AWS-GatherSoftwareInventory` association in an account and Region.
+  Find the existing association UUID before the first apply:
+
+  ```sh
+  aws ssm list-associations \
+    --association-filter-list key=Name,value=AWS-GatherSoftwareInventory \
+    --query 'Associations[].{AssociationId:AssociationId,AssociationName:AssociationName,Targets:Targets}' \
+    --output table
+  ```
+
+  For the generated Terragrunt scaffold, set the UUID in `inputs.yaml`:
+
+  ```yaml
+  settings:
+    inventory:
+      enabled: true
+      existing_association_id: 10abcdef-0abc-1234-5678-90abcdef1234
+  ```
+
+  The scaffold generates a root-level declarative import for
+  `aws_ssm_association.inventory[0]`. The first plan should show one import instead of one add.
+  Keep the configured schedule, targets, parameters, and association name aligned with the existing
+  association if it must not be updated after adoption. Terraform 1.5 or newer or OpenTofu 1.6 or newer
+  is required for configuration-driven import.
+
+  For an existing Terragrunt folder that has not been regenerated from the updated scaffold, perform
+  the equivalent one-time import directly:
+
+  ```sh
+  terragrunt import \
+    'aws_ssm_association.inventory[0]' \
+    '10abcdef-0abc-1234-5678-90abcdef1234'
+  ```
+
+  Direct module callers can add the import block in their root module:
+
+  ```hcl
+  import {
+    to = module.ssm_compliance.aws_ssm_association.inventory[0]
+    id = "10abcdef-0abc-1234-5678-90abcdef1234"
+  }
+  ```
+
+  Or perform the equivalent one-time state import:
+
+  ```sh
+  tofu import \
+    'module.ssm_compliance.aws_ssm_association.inventory[0]' \
+    '10abcdef-0abc-1234-5678-90abcdef1234'
+  ```
+
   ### Complete annotated settings reference
 
   The Terragrunt scaffold generates this fully annotated `inputs.yaml`. Active values show the safe
@@ -149,6 +202,7 @@ usage: |-
     # Systems Manager Inventory association.
     inventory:
       enabled: true                                # Create AWS-GatherSoftwareInventory. Default: true
+      # existing_association_id: 10abcdef-0abc-1234-5678-90abcdef1234 # Existing association UUID to import through the generated Terragrunt configuration.
       # association_name: ssm-inventory-example    # Default: ssm-inventory-<system-name>
       schedule: rate(1 day)                        # Rate or cron expression. Default: rate(1 day)
       # apply_only_at_cron_interval: false         # Wait for the first schedule instead of running on apply. Default: false
@@ -333,8 +387,10 @@ usage: |-
 
   ### Adoption notes
 
-  - Systems Manager allows only one Inventory association per node. Import, disable, or retarget an
-    existing Inventory association before enabling the module default on overlapping nodes.
+  - Systems Manager allows only one apply-all Inventory association. Import it with
+    `settings.inventory.existing_association_id`, disable Inventory, or retarget the existing association
+    before enabling the module default. Direct Terraform/OpenTofu callers must declare the root import
+    block or run the documented one-time import command.
   - Default Host Management Configuration is account- and Region-scoped. Set
     `settings.default_host_management.create_role = false` to use an existing role with the configured
     name and path.

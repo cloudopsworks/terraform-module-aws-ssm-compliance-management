@@ -28,6 +28,7 @@
 #     block_public_sharing: true
 #   inventory:
 #     enabled: true
+#     existing_association_id: null
 #     association_name: ssm-inventory-example
 #     schedule: rate(1 day)
 #     targets:
@@ -148,6 +149,20 @@ variable "settings" {
       trimspace(try(var.settings.inventory.resource_data_sync.bucket_name, "")) != ""
     )
     error_message = "inventory.resource_data_sync.bucket_name is required when the resource data sync is enabled."
+  }
+
+  validation {
+    condition = (
+      try(var.settings.inventory.existing_association_id, null) == null ||
+      (
+        try(var.settings.inventory.enabled, true) &&
+        can(regex(
+          "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+          var.settings.inventory.existing_association_id
+        ))
+      )
+    )
+    error_message = "inventory.existing_association_id must be a valid SSM association UUID and requires inventory.enabled to be true."
   }
 
   validation {

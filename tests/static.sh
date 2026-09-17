@@ -39,6 +39,7 @@ documented_settings=(
   "automation_logging"
   "document_security"
   "inventory"
+  "existing_association_id"
   "resource_data_sync"
   "patch_scan"
   "documents"
@@ -66,6 +67,13 @@ if grep --fixed-strings --quiet '"/aws/ssm/automation/${local.system_name}"' acc
   echo "Legacy generic Automation log group namespace is not allowed." >&2
   exit 1
 fi
+
+grep --fixed-strings --quiet 'generate "inventory_association_import"' .boilerplate/terragrunt.hcl
+grep --fixed-strings --quiet 'to = aws_ssm_association.inventory[0]' .boilerplate/terragrunt.hcl
+grep --fixed-strings --quiet 'module.ssm_compliance.aws_ssm_association.inventory[0]' README.yaml
+
+tofu -chdir=examples/import-existing-inventory init -backend=false -input=false >/dev/null
+tofu -chdir=examples/import-existing-inventory validate
 
 for forbidden in \
   'SSM-SessionManagerRunShell' \

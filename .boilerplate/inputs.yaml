@@ -28,6 +28,7 @@ settings:
   # Systems Manager Inventory association.
   inventory:
     enabled: true                                # Create AWS-GatherSoftwareInventory. Default: true
+    # existing_association_id: 10abcdef-0abc-1234-5678-90abcdef1234 # Existing association UUID to import through the generated Terragrunt configuration.
     # association_name: ssm-inventory-example    # Default: ssm-inventory-<system-name>
     schedule: rate(1 day)                        # Rate or cron expression. Default: rate(1 day)
     # apply_only_at_cron_interval: false         # Wait for the first schedule instead of running on apply. Default: false
@@ -203,7 +204,7 @@ settings:
   #           Operation: [Install]
   #           RebootOption: [RebootIfNeeded]
   #         cloudwatch_output_enabled: true      # Optional Run Command CloudWatch output toggle.
-    #         cloudwatch_log_group_name: /aws/ssm/maintenance # Default: the compliance Automation log group; this option references but does not create another group.
+  #         cloudwatch_log_group_name: /aws/ssm/maintenance # Default: the compliance Automation log group; this option references but does not create another group.
   #         notification_config:                 # Optional SNS Run Command notifications.
   #           notification_arn: arn:aws:sns:us-east-1:123456789012:ssm-notifications
   #           notification_events: [All]         # All, InProgress, Success, TimedOut, Cancelled, or Failed.

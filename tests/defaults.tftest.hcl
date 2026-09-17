@@ -94,6 +94,23 @@ run "use_existing_automation_log_group" {
   }
 }
 
+run "accept_existing_inventory_association" {
+  command = plan
+
+  variables {
+    settings = {
+      inventory = {
+        existing_association_id = "10abcdef-0abc-1234-5678-90abcdef1234"
+      }
+    }
+  }
+
+  assert {
+    condition     = length(aws_ssm_association.inventory) == 1
+    error_message = "An existing Inventory association ID must preserve the managed import destination."
+  }
+}
+
 run "complete_patching" {
   command = plan
 
@@ -229,6 +246,20 @@ run "reject_sync_without_bucket" {
         resource_data_sync = {
           enabled = true
         }
+      }
+    }
+  }
+
+  expect_failures = [var.settings]
+}
+
+run "reject_invalid_inventory_association_id" {
+  command = plan
+
+  variables {
+    settings = {
+      inventory = {
+        existing_association_id = "not-an-association-id"
       }
     }
   }

@@ -5,6 +5,8 @@ locals {
   env_vars    = yamldecode(file(find_in_parent_folders("env-inputs.yaml")))
   global_vars = yamldecode(file(find_in_parent_folders("global-inputs.yaml")))
 
+  inventory_association_id = try(local.local_vars.settings.inventory.existing_association_id, null)
+
   local_tags  = jsondecode(file("./local-tags.json"))
   spoke_tags  = jsondecode(file(find_in_parent_folders("spoke-tags.json")))
   region_tags = jsondecode(file(find_in_parent_folders("region-tags.json")))
@@ -26,6 +28,21 @@ include "root" {
 
 terraform {
   source = "{{ .sourceUrl }}"
+}
+
+# When an account already has its one allowed apply-all Inventory association,
+# generate a root-level import block so the first plan adopts it instead of
+# attempting to create a duplicate. Remove or leave the ID after the import;
+# declarative imports are idempotent once the resource is in state.
+generate "inventory_association_import" {
+  path      = "inventory-association-import.tf"
+  if_exists = "overwrite_terragrunt"
+  contents = local.inventory_association_id == null ? "" : <<-EOF
+import {
+  to = aws_ssm_association.inventory[0]
+  id = ${jsonencode(local.inventory_association_id)}
+}
+EOF
 }
 
 inputs = {
