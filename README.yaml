@@ -1,0 +1,187 @@
+name: Terraform AWS SSM Compliance Management Module
+#logo: logo/logo.jpg
+
+badges:
+  - name: Latest Release
+    image: https://img.shields.io/github/release/cloudopsworks/terraform-module-aws-ssm-compliance-management.svg?style=for-the-badge
+    url: https://github.com/cloudopsworks/terraform-module-aws-ssm-compliance-management/releases/latest
+  - name: Last Updated
+    image: https://img.shields.io/github/last-commit/cloudopsworks/terraform-module-aws-ssm-compliance-management.svg?style=for-the-badge
+    url: https://github.com/cloudopsworks/terraform-module-aws-ssm-compliance-management/commits
+
+license: "APACHE2"
+
+copyrights:
+  - name: "Cloud Ops Works LLC"
+    url: "https://cloudops.works"
+    year: "2026"
+
+github_repo: cloudopsworks/terraform-module-aws-ssm-compliance-management
+
+description: |-
+  Terraform module for the account- and Region-level AWS Systems Manager resources that support AWS Security Hub CSPM controls SSM.1 through SSM.7. It manages Default Host Management Configuration, Inventory, patch compliance scans, patch baselines and groups, State Manager associations, private and tagged SSM documents, Automation logging, public document-sharing prevention, and Maintenance Windows. Session Manager resources are intentionally excluded.
+
+introduction: |-
+  This module establishes a Systems Manager compliance baseline without managing Session Manager preferences,
+  session documents, interactive access, RDP, SSH, or session audit logging.
+
+  Safe account-level controls are enabled by default:
+
+  - Default Host Management Configuration and its IAM service role.
+  - Daily `AWS-GatherSoftwareInventory` collection for all managed nodes.
+  - Daily, non-rebooting `AWS-RunPatchBaseline` scan operations for all managed nodes.
+  - CloudWatch Logs delivery settings for Automation customer-script output.
+  - Prevention of new public SSM document sharing.
+
+  Patch installation, custom patch baselines, resource data sync, customer-owned documents, additional
+  State Manager associations, and Maintenance Windows are opt-in because they require deployment-specific
+  schedules, targets, permissions, or storage destinations.
+
+  ## Security Hub CSPM control coverage
+
+  | Control | Module responsibility | Runtime responsibility |
+  | --- | --- | --- |
+  | SSM.1 | Enables Default Host Management Configuration and creates or references its IAM role. | Instances must meet Systems Manager managed-node prerequisites and successfully register. |
+  | SSM.2 | Creates a scheduled patch compliance scan and optionally manages patch baselines, groups, and install windows. | Nodes must execute scans and installations successfully; missing or failed patches still produce findings. |
+  | SSM.3 | Creates Inventory, patch scan, and caller-defined State Manager associations with compliance reporting. | Associations must execute successfully on every targeted managed node. |
+  | SSM.4 | Blocks future public sharing and creates module-owned documents without public sharing. | Existing public documents must be identified and unshared before or during adoption. |
+  | SSM.5 | Applies the module's standard tags plus document-specific tags to every module-owned document. | Existing documents outside this module remain the caller's responsibility. |
+  | SSM.6 | Configures Automation customer-script logging to a CloudWatch Logs group. | Automation runbooks and IAM roles must permit their expected logging and workload operations. |
+  | SSM.7 | Sets the account/Region public-sharing permission to `Disable`. | The setting prevents new public shares but does not remove shares created previously. |
+
+  Security Hub findings are based on observed AWS resource and execution state. A successful Terraform
+  apply provides the required configuration but cannot guarantee that managed nodes remain online or that
+  every association and patch operation succeeds.
+
+usage: |-
+  The module accepts one structured `settings` object. With an empty object it applies the safe baseline
+  described above. Disable or narrow an individual default explicitly when adopting an account with
+  existing associations.
+
+  ```hcl
+  module "ssm_compliance" {
+    source  = "cloudopsworks/ssm-compliance-management/aws"
+    version = "~> 1.0"
+
+    org = {
+      organization_name = "example"
+      organization_unit = "platform"
+      environment_type  = "production"
+      environment_name  = "shared"
+    }
+
+    settings = {
+      inventory = {
+        enabled  = true
+        schedule = "rate(1 day)"
+        targets = [{
+          key    = "tag:SSMManaged"
+          values = ["true"]
+        }]
+      }
+
+      patch_scan = {
+        enabled  = true
+        schedule = "rate(1 day)"
+        targets = [{
+          key    = "tag:Patch Group"
+          values = ["amazon-linux"]
+        }]
+      }
+
+      patch_baselines = {
+        amazon_linux = {
+          operating_system = "AMAZON_LINUX_2"
+          approval_rules = [{
+            approve_after_days = 7
+            compliance_level   = "HIGH"
+            patch_filters = [{
+              key    = "CLASSIFICATION"
+              values = ["Security"]
+            }]
+          }]
+        }
+      }
+
+      patch_groups = {
+        amazon_linux = {
+          patch_group  = "amazon-linux"
+          baseline_key = "amazon_linux"
+        }
+      }
+    }
+  }
+  ```
+
+  ### Adoption notes
+
+  - Systems Manager allows only one Inventory association per node. Import, disable, or retarget an
+    existing Inventory association before enabling the module default on overlapping nodes.
+  - Default Host Management Configuration is account- and Region-scoped. Set
+    `settings.default_host_management.create_role = false` to use an existing role with the configured
+    name and path.
+  - `settings.document_security.block_public_sharing` defaults to `true`. The service setting blocks new
+    public shares; it does not unshare an existing document.
+  - Maintenance Window tasks support `RUN_COMMAND` documents. They default to the AWS-managed
+    `AmazonSSMMaintenanceWindowRole`; attach extra managed policies through
+    `settings.maintenance.additional_policy_arns` when a task needs access to workload resources.
+  - Inventory resource data sync expects an existing S3 bucket and, when configured, KMS key. Their
+    policies are outside this module because the destination may be centralized or cross-account.
+
+examples: |-
+  A patch-install Maintenance Window can target the same `Patch Group` value associated with a custom
+  baseline:
+
+  ```hcl
+  settings = {
+    maintenance_windows = {
+      monthly = {
+        schedule          = "cron(0 3 ? * SUN#1 *)"
+        schedule_timezone = "UTC"
+        duration          = 4
+        cutoff            = 1
+
+        targets = {
+          amazon_linux = {
+            targets = [{
+              key    = "tag:Patch Group"
+              values = ["amazon-linux"]
+            }]
+          }
+        }
+
+        tasks = {
+          install = {
+            task_arn        = "AWS-RunPatchBaseline"
+            target_keys     = ["amazon_linux"]
+            max_concurrency = "10%"
+            max_errors      = "1"
+            parameters = {
+              Operation    = ["Install"]
+              RebootOption = ["RebootIfNeeded"]
+            }
+          }
+        }
+      }
+    }
+  }
+  ```
+
+quickstart: |-
+  ```sh
+  mkdir -p production/us-east-1/001/ssm-compliance-management
+  cd production/us-east-1/001/ssm-compliance-management
+
+  terragrunt scaffold github.com/cloudopsworks/terraform-module-aws-ssm-compliance-management
+  # Review the generated inputs.yaml, then:
+  terragrunt plan
+  terragrunt apply
+  ```
+
+include:
+  - "docs/targets.md"
+  - "docs/terraform.md"
+
+contributors:
+  - name: "Cristian Beraha"
+    github: "berahac"

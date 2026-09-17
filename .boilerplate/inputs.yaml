@@ -1,0 +1,56 @@
+# Module configuration
+#
+# Safe defaults enable Default Host Management, Inventory, daily patch scans, Automation
+# logging, and the public document sharing block. Review target overlap before applying to
+# an account that already has Systems Manager associations.
+settings:
+  default_host_management:
+    enabled: true
+    create_role: true
+    # role_name: AWSSystemsManagerDefaultEC2InstanceManagementRole
+    # role_path: /service-role/
+    # additional_policy_arns: []
+
+  automation_logging:
+    enabled: true
+    create_log_group: true
+    retention_in_days: 365
+    # log_group_name: /aws/ssm/automation/example
+    # kms_key_id: null
+    # skip_destroy: false
+
+  document_security:
+    block_public_sharing: true
+
+  inventory:
+    enabled: true
+    schedule: rate(1 day)
+    targets:
+      - key: InstanceIds
+        values: ["*"]
+    # parameters: {}
+    # resource_data_sync:
+    #   enabled: false
+    #   name: inventory-sync
+    #   bucket_name: existing-inventory-bucket
+    #   prefix: inventory
+    #   region: us-east-1
+
+  patch_scan:
+    enabled: true
+    schedule: rate(1 day)
+    compliance_severity: HIGH
+    targets:
+      - key: InstanceIds
+        values: ["*"]
+
+  # documents: {}
+  # associations: {}
+  # patch_baselines: {}
+  # patch_groups: {}
+
+  maintenance:
+    create_role: true
+    # additional_policy_arns: []
+
+  # maintenance_windows: {}
