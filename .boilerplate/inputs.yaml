@@ -1,56 +1,210 @@
 # Module configuration
 #
-# Safe defaults enable Default Host Management, Inventory, daily patch scans, Automation
-# logging, and the public document sharing block. Review target overlap before applying to
-# an account that already has Systems Manager associations.
+# Every supported settings option is shown below. Safe defaults are active; optional
+# features and overrides remain commented. Review target overlap before applying to an
+# account that already has Systems Manager associations.
 settings:
+  # Default Host Management Configuration (Security Hub SSM.1).
   default_host_management:
-    enabled: true
-    create_role: true
-    # role_name: AWSSystemsManagerDefaultEC2InstanceManagementRole
-    # role_path: /service-role/
-    # additional_policy_arns: []
+    enabled: true                                # Enable the account/Region service setting. Default: true
+    create_role: true                            # Create the IAM role named below. Default: true
+    # role_name: AWSSystemsManagerDefaultEC2InstanceManagementRole # Existing or created role name.
+    # role_path: /service-role/                   # IAM path, including leading/trailing slash. Default: /service-role/
+    # additional_policy_arns: []                 # Extra managed policies attached only when create_role is true.
 
+  # Automation customer-script logging (Security Hub SSM.6).
   automation_logging:
-    enabled: true
-    create_log_group: true
-    retention_in_days: 365
-    # log_group_name: /aws/ssm/automation/example
-    # kms_key_id: null
-    # skip_destroy: false
+    enabled: true                                # Configure both Automation logging service settings. Default: true
+    create_log_group: true                       # Create the CloudWatch Logs group. Default: true
+    # log_group_name: /aws/ssm/automation/example # Created or pre-existing group name. Default: /aws/ssm/automation/<system-name>
+    retention_in_days: 365                       # CloudWatch retention when creating the group. Default: 365
+    # kms_key_id: null                           # Optional KMS key ARN for CloudWatch Logs encryption.
+    # skip_destroy: false                        # Retain the log group during destroy. Default: false
 
+  # SSM document account controls (Security Hub SSM.4 and SSM.7).
   document_security:
-    block_public_sharing: true
+    block_public_sharing: true                   # Set public-sharing-permission to Disable. Default: true
 
+  # Systems Manager Inventory association.
   inventory:
-    enabled: true
-    schedule: rate(1 day)
-    targets:
-      - key: InstanceIds
-        values: ["*"]
-    # parameters: {}
-    # resource_data_sync:
-    #   enabled: false
-    #   name: inventory-sync
-    #   bucket_name: existing-inventory-bucket
-    #   prefix: inventory
-    #   region: us-east-1
+    enabled: true                                # Create AWS-GatherSoftwareInventory. Default: true
+    # association_name: ssm-inventory-example    # Default: ssm-inventory-<system-name>
+    schedule: rate(1 day)                        # Rate or cron expression. Default: rate(1 day)
+    # apply_only_at_cron_interval: false         # Wait for the first schedule instead of running on apply. Default: false
+    # max_concurrency: "10%"                     # Optional node concurrency number or percentage.
+    # max_errors: "1"                            # Optional tolerated error number or percentage.
+    # compliance_severity: MEDIUM                # CRITICAL, HIGH, MEDIUM, LOW, or UNSPECIFIED. Default: MEDIUM
+    # wait_for_success_timeout_seconds: null      # Optional provider wait timeout.
+    targets:                                     # Up to five State Manager target blocks.
+      - key: InstanceIds                         # Examples: InstanceIds, tag:Environment, resource-groups:Name.
+        values: ["*"]                            # Default targets every managed node.
+    # parameters:                                # Overrides merged with the Inventory defaults below.
+    #   applications: Enabled                    # Enabled or Disabled. Default: Enabled
+    #   awsComponents: Enabled                   # Enabled or Disabled. Default: Enabled
+    #   customInventory: Enabled                 # Enabled or Disabled. Default: Enabled
+    #   instanceDetailedInformation: Enabled     # Enabled or Disabled. Default: Enabled
+    #   networkConfig: Enabled                   # Enabled or Disabled. Default: Enabled
+    #   services: Enabled                        # Enabled or Disabled. Default: Enabled
+    #   windowsRoles: Enabled                    # Enabled or Disabled. Default: Enabled
+    #   windowsUpdates: Enabled                  # Enabled or Disabled. Default: Enabled
+    #   files: '[]'                              # Optional AWS-GatherSoftwareInventory files JSON string.
+    #   windowsRegistry: '[]'                    # Optional Windows registry inventory JSON string.
+    # resource_data_sync:                        # Optional Inventory export to an existing S3 bucket.
+    #   enabled: false                           # Default: false
+    #   name: inventory-sync                     # Default: ssm-inventory-<short-system-name>
+    #   bucket_name: existing-inventory-bucket   # Required when enabled; this module does not create the bucket.
+    #   prefix: inventory                        # S3 key prefix. Default: inventory
+    #   region: us-east-1                        # Bucket Region. Default: current provider Region
+    #   sync_format: JsonSerDe                   # SSM Inventory sync format. Default: JsonSerDe
+    #   kms_key_arn: null                        # Optional KMS key ARN used by the destination.
 
+  # Non-rebooting patch compliance scan association (Security Hub SSM.2/SSM.3).
   patch_scan:
-    enabled: true
-    schedule: rate(1 day)
-    compliance_severity: HIGH
-    targets:
+    enabled: true                                # Create AWS-RunPatchBaseline with Operation=Scan. Default: true
+    # association_name: ssm-patch-scan-example   # Default: ssm-patch-scan-<system-name>
+    schedule: rate(1 day)                        # Rate or cron expression. Default: rate(1 day)
+    # apply_only_at_cron_interval: false         # Wait for the first schedule instead of running on apply. Default: false
+    compliance_severity: HIGH                    # CRITICAL, HIGH, MEDIUM, LOW, or UNSPECIFIED. Default: HIGH
+    # max_concurrency: "10%"                     # Node concurrency number or percentage. Default: 10%
+    # max_errors: "1"                            # Tolerated error number or percentage. Default: 1
+    # wait_for_success_timeout_seconds: null      # Optional provider wait timeout.
+    targets:                                     # Up to five State Manager target blocks.
       - key: InstanceIds
-        values: ["*"]
+        values: ["*"]                            # Default targets every managed node.
 
-  # documents: {}
-  # associations: {}
-  # patch_baselines: {}
-  # patch_groups: {}
+  # Customer-owned SSM documents. Session documents are rejected by this module.
+  # documents:
+  #   example:                                   # Arbitrary stable map key.
+  #     name: ExampleDocument                    # Default: <system-name>-<map-key>
+  #     document_type: Command                   # Any AWS-supported type except Session. Default: Command
+  #     document_format: YAML                    # YAML, JSON, or TEXT as supported by the document type. Default: YAML
+  #     content: |-                              # Required document body.
+  #       schemaVersion: '2.2'
+  #       description: Example command document
+  #       mainSteps: []
+  #     target_type: /AWS::EC2::Instance         # Optional document target type.
+  #     version_name: v1                         # Optional friendly document version name.
+  #     shared_account_ids: []                   # Private 12-digit AWS account IDs only; public "All" is rejected.
+  #     tags: {}                                 # Merged over the module standard tags.
+  #     attachments_source:                      # Optional document attachment sources, up to twenty.
+  #       - key: SourceUrl                       # SourceUrl, S3FileUrl, or AttachmentReference.
+  #         name: null                           # Optional attachment name.
+  #         values: ["https://example.invalid"]  # Values accepted by the selected attachment key.
 
+  # Additional State Manager associations (Security Hub SSM.3).
+  # associations:
+  #   update_agent:                              # Arbitrary stable map key.
+  #     name: AWS-UpdateSSMAgent                 # Required AWS-managed or customer document name.
+  #     association_name: update-ssm-agent       # Default: <system-name>-<map-key>
+  #     document_version: "$LATEST"              # Optional document version.
+  #     parameters: {}                           # Document parameters as a map of strings.
+  #     schedule_expression: rate(7 days)        # Optional rate or cron expression.
+  #     apply_only_at_cron_interval: false       # Optional; wait for schedule instead of running on apply.
+  #     calendar_names: []                       # Optional SSM Change Calendar document ARNs/names.
+  #     compliance_severity: MEDIUM              # CRITICAL, HIGH, MEDIUM, LOW, or UNSPECIFIED. Default: MEDIUM
+  #     sync_compliance: AUTO                    # AUTO or MANUAL. Default: AUTO
+  #     max_concurrency: "10%"                   # Optional node concurrency number or percentage.
+  #     max_errors: "1"                          # Optional tolerated error number or percentage.
+  #     automation_target_parameter_name: null   # Optional Automation target parameter.
+  #     wait_for_success_timeout_seconds: null   # Optional provider wait timeout.
+  #     targets:                                 # Up to five target blocks.
+  #       - key: InstanceIds
+  #         values: ["*"]
+  #     output_location:                         # Optional command output destination.
+  #       s3_bucket_name: existing-output-bucket # Required within output_location.
+  #       s3_key_prefix: ssm-associations        # Optional S3 prefix.
+  #       s3_region: us-east-1                   # Optional bucket Region.
+
+  # Custom Patch Manager baselines.
+  # patch_baselines:
+  #   amazon_linux:                              # Arbitrary stable map key referenced by patch_groups.baseline_key.
+  #     name: example-amazon-linux               # Default: <system-name>-<map-key>
+  #     description: Security updates baseline   # Optional description.
+  #     operating_system: AMAZON_LINUX_2         # AWS Patch Manager operating-system enum. Default: AMAZON_LINUX_2
+  #     approved_patches: []                     # Optional explicit approved patch IDs.
+  #     approved_patches_compliance_level: HIGH  # Optional compliance level for explicit approved patches.
+  #     approved_patches_enable_non_security: false # Include approved non-security patches. Optional.
+  #     rejected_patches: []                     # Optional explicit rejected patch IDs.
+  #     rejected_patches_action: BLOCK           # ALLOW_AS_DEPENDENCY or BLOCK. Optional.
+  #     available_security_updates_compliance_status: COMPLIANT # Optional COMPLIANT or NON_COMPLIANT.
+  #     tags: {}                                 # Merged over the module standard tags.
+  #     approval_rules:                          # Zero or more approval rules.
+  #       - approve_after_days: 7                # Use this or approve_until_date as supported by AWS.
+  #         approve_until_date: null             # ISO date, mutually exclusive with approve_after_days.
+  #         compliance_level: HIGH               # CRITICAL, HIGH, MEDIUM, LOW, INFORMATIONAL, or UNSPECIFIED.
+  #         enable_non_security: false           # Include matching non-security updates. Default: false
+  #         patch_filters:                       # One to ten filters per rule.
+  #           - key: CLASSIFICATION              # PRODUCT, CLASSIFICATION, MSRC_SEVERITY, PATCH_ID, SECTION, etc.
+  #             values: [Security]
+  #     global_filters:                          # Optional filters applied to every rule, maximum four.
+  #       - key: PRODUCT
+  #         values: [AmazonLinux2]
+  #     sources:                                 # Optional alternative patch repositories, maximum twenty.
+  #       - name: MyRepository
+  #         products: [AmazonLinux2]
+  #         configuration: "[main]\nname=Example\nbaseurl=https://example.invalid"
+
+  # Patch group to baseline registrations.
+  # patch_groups:
+  #   amazon_linux:                              # Arbitrary stable map key.
+  #     patch_group: amazon-linux                # Required value used by the instance Patch Group tag.
+  #     baseline_key: amazon_linux               # Use exactly one: key from patch_baselines...
+  #     # baseline_id: pb-0123456789abcdef0      # ...or an existing baseline ID managed elsewhere.
+
+  # Shared Maintenance Window task role settings.
   maintenance:
-    create_role: true
-    # additional_policy_arns: []
+    create_role: true                            # Create a role when at least one task exists. Default: true
+    # role_name: example-ssm-maintenance-window  # Default: <short-system-name>-ssm-maintenance-window
+    # role_path: /service-role/                   # IAM path, including leading/trailing slash. Default: /service-role/
+    # additional_policy_arns: []                 # Extra task policies attached to the created role.
 
-  # maintenance_windows: {}
+  # Maintenance Windows, registered targets, and RUN_COMMAND tasks.
+  # maintenance_windows:
+  #   monthly:                                   # Arbitrary stable window map key.
+  #     name: example-monthly-patching           # Default: <system-name>-<window-key>
+  #     description: Monthly approved patching   # Optional description.
+  #     schedule: cron(0 3 ? * SUN#1 *)          # Required cron or rate expression.
+  #     schedule_timezone: UTC                   # IANA timezone. Default: UTC
+  #     schedule_offset: null                    # Optional number of days to offset cron execution.
+  #     duration: 4                              # Window duration in hours. Default: 4
+  #     cutoff: 1                                # Hours before the end when new tasks stop. Default: 1
+  #     enabled: true                            # Enable the window. Default: true
+  #     allow_unassociated_targets: false        # Allow task targets not registered with this window. Default: false
+  #     start_date: null                         # Optional ISO-8601 start timestamp.
+  #     end_date: null                           # Optional ISO-8601 end timestamp.
+  #     tags: {}                                 # Merged over the module standard tags.
+  #     targets:
+  #       linux:                                 # Arbitrary target key referenced by tasks.target_keys.
+  #         name: linux                          # Default: target map key
+  #         description: Linux patch group       # Optional description.
+  #         resource_type: INSTANCE              # INSTANCE or RESOURCE_GROUP. Default: INSTANCE
+  #         owner_information: platform          # Optional owner information.
+  #         targets:                             # One to five target selectors.
+  #           - key: tag:Patch Group             # Examples: InstanceIds, tag:<key>, resource-groups:Name.
+  #             values: [amazon-linux]
+  #     tasks:
+  #       install:                               # Arbitrary task map key.
+  #         name: install-approved-patches       # Default: task map key
+  #         description: Install approved patches # Optional description.
+  #         task_arn: AWS-RunPatchBaseline       # RUN_COMMAND document name/ARN. Default: AWS-RunPatchBaseline
+  #         task_type: RUN_COMMAND               # Only supported value. Default: RUN_COMMAND
+  #         priority: 1                          # Lower numbers run first. Default: 1
+  #         max_concurrency: "10%"               # Node concurrency number or percentage. Default: 10%
+  #         max_errors: "1"                      # Tolerated error number or percentage. Default: 1
+  #         cutoff_behavior: CANCEL_TASK         # CANCEL_TASK or CONTINUE_TASK. Default: CANCEL_TASK
+  #         service_role_arn: null               # Required per task when maintenance.create_role is false.
+  #         target_keys: [linux]                 # Required keys from this window's targets map.
+  #         comment: Monthly patch installation  # Optional Run Command comment.
+  #         document_version: "$LATEST"          # Optional command document version.
+  #         output_s3_bucket: existing-output-bucket # Optional command output bucket.
+  #         output_s3_key_prefix: maintenance    # Optional command output prefix.
+  #         timeout_seconds: 3600                # Optional command timeout.
+  #         parameters:                          # Run Command document parameters; values are string lists.
+  #           Operation: [Install]
+  #           RebootOption: [RebootIfNeeded]
+  #         cloudwatch_output_enabled: true      # Optional Run Command CloudWatch output toggle.
+  #         cloudwatch_log_group_name: /aws/ssm/maintenance # Default: Automation log group name.
+  #         notification_config:                 # Optional SNS Run Command notifications.
+  #           notification_arn: arn:aws:sns:us-east-1:123456789012:ssm-notifications
+  #           notification_events: [All]         # All, InProgress, Success, TimedOut, Cancelled, or Failed.
+  #           notification_type: Command         # Command or Invocation.

@@ -8,6 +8,9 @@
 #
 
 # settings: # (Optional) AWS Systems Manager compliance settings. Default: {}
+#
+# This is a compact example. See .boilerplate/inputs.yaml and the generated README
+# for the complete, commented reference covering every supported nested option.
 #   default_host_management:
 #     enabled: true
 #     create_role: true
@@ -130,6 +133,13 @@ variable "settings" {
       for _, document in try(var.settings.documents, {}) : trimspace(try(document.content, "")) != ""
     ])
     error_message = "Every settings.documents entry must provide non-empty content."
+  }
+
+  validation {
+    condition = alltrue([
+      for _, document in try(var.settings.documents, {}) : upper(try(document.document_type, "Command")) != "SESSION"
+    ])
+    error_message = "settings.documents cannot create Session documents; Session Manager resources are intentionally outside this module."
   }
 
   validation {

@@ -34,6 +34,33 @@ for resource in "${required_resources[@]}"; do
   grep -R --fixed-strings --quiet "$resource" -- ./*.tf
 done
 
+documented_settings=(
+  "default_host_management"
+  "automation_logging"
+  "document_security"
+  "inventory"
+  "resource_data_sync"
+  "patch_scan"
+  "documents"
+  "attachments_source"
+  "associations"
+  "output_location"
+  "patch_baselines"
+  "approval_rules"
+  "global_filters"
+  "sources"
+  "patch_groups"
+  "maintenance"
+  "maintenance_windows"
+  "cloudwatch_output_enabled"
+  "notification_config"
+)
+
+for setting in "${documented_settings[@]}"; do
+  grep --fixed-strings --quiet "$setting" .boilerplate/inputs.yaml
+  grep --fixed-strings --quiet "$setting" README.yaml
+done
+
 for forbidden in \
   'SSM-SessionManagerRunShell' \
   'AWS-StartSSHSession' \

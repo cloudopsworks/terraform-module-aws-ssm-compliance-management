@@ -154,6 +154,23 @@ run "reject_public_document_share" {
   expect_failures = [var.settings]
 }
 
+run "reject_session_document" {
+  command = plan
+
+  variables {
+    settings = {
+      documents = {
+        session = {
+          document_type = "Session"
+          content       = "{}"
+        }
+      }
+    }
+  }
+
+  expect_failures = [var.settings]
+}
+
 run "reject_unknown_window_target" {
   command = plan
 
