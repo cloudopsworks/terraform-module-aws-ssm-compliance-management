@@ -7,7 +7,26 @@ mock_provider "aws" {
 
   mock_data "aws_partition" {
     defaults = {
-      partition = "aws"
+      partition  = "aws"
+      dns_suffix = "amazonaws.com"
+    }
+  }
+
+  mock_data "aws_caller_identity" {
+    defaults = {
+      account_id = "123456789012"
+    }
+  }
+
+  mock_data "aws_iam_policy_document" {
+    defaults = {
+      json = "{}"
+    }
+  }
+
+  mock_resource "aws_kms_key" {
+    defaults = {
+      arn = "arn:aws:kms:us-east-1:123456789012:key/mock"
     }
   }
 
@@ -265,4 +284,86 @@ run "reject_invalid_inventory_association_id" {
   }
 
   expect_failures = [var.settings]
+}
+
+run "automation_logs_default_no_cmk" {
+  command = plan
+
+  assert {
+    condition     = length(aws_kms_key.automation) == 0
+    error_message = "The Automation log CMK must be opt-in."
+  }
+}
+
+run "automation_logs_module_cmk" {
+  command = plan
+
+  variables {
+    settings = {
+      automation_logging = {
+        create_kms_key = true
+      }
+    }
+  }
+
+  assert {
+    condition     = length(aws_kms_key.automation) == 1 && aws_kms_key.automation[0].enable_key_rotation == true && aws_kms_key.automation[0].rotation_period_in_days == 90
+    error_message = "create_kms_key must create a CMK rotating every 90 days by default."
+  }
+
+  assert {
+    condition     = aws_cloudwatch_log_group.automation[0].kms_key_id == "arn:aws:kms:us-east-1:123456789012:key/mock"
+    error_message = "The module-created log group must use the module-created CMK."
+  }
+}
+
+run "automation_logs_cmk_requires_module_log_group" {
+  command = plan
+
+  variables {
+    settings = {
+      automation_logging = {
+        create_kms_key   = true
+        create_log_group = false
+        log_group_name   = "/platform/shared/ssm-automation"
+      }
+    }
+  }
+
+  expect_failures = [aws_ssm_service_setting.automation_log_destination]
+}
+
+run "automation_logs_existing_key" {
+  command = plan
+
+  variables {
+    settings = {
+      automation_logging = {
+        kms_key_id = "arn:aws:kms:us-east-1:123456789012:key/existing"
+      }
+    }
+  }
+
+  assert {
+    condition     = length(aws_kms_key.automation) == 0 && aws_cloudwatch_log_group.automation[0].kms_key_id == "arn:aws:kms:us-east-1:123456789012:key/existing"
+    error_message = "An existing kms_key_id must be used as-is."
+  }
+}
+
+run "automation_logs_cmk_rotation_period_adjustable" {
+  command = plan
+
+  variables {
+    settings = {
+      automation_logging = {
+        create_kms_key                  = true
+        kms_key_rotation_period_in_days = 180
+      }
+    }
+  }
+
+  assert {
+    condition     = aws_kms_key.automation[0].rotation_period_in_days == 180
+    error_message = "The CMK rotation period must be adjustable."
+  }
 }
