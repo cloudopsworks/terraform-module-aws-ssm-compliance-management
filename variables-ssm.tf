@@ -23,6 +23,7 @@
 #     log_group_name: /aws/ssm/compliance-management/automation/example
 #     retention_in_days: 365
 #     kms_key_id: null
+#     create_kms_key: false
 #     skip_destroy: false
 #   document_security:
 #     block_public_sharing: true

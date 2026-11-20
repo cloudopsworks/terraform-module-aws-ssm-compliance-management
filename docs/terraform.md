@@ -9,7 +9,7 @@
 
 | Name | Version |
 | ---- | ------- |
-| <a name="provider_aws"></a> [aws](#provider\_aws) | ~> 6.35 |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.73.0 |
 
 ## Modules
 
@@ -28,6 +28,8 @@
 | [aws_iam_role_policy_attachment.default_host_management_additional](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
 | [aws_iam_role_policy_attachment.maintenance](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
 | [aws_iam_role_policy_attachment.maintenance_additional](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
+| [aws_kms_alias.automation](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/kms_alias) | resource |
+| [aws_kms_key.automation](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/kms_key) | resource |
 | [aws_ssm_association.inventory](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_association) | resource |
 | [aws_ssm_association.patch_scan](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_association) | resource |
 | [aws_ssm_association.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_association) | resource |
@@ -42,6 +44,8 @@
 | [aws_ssm_service_setting.automation_log_group](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_service_setting) | resource |
 | [aws_ssm_service_setting.block_public_document_sharing](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_service_setting) | resource |
 | [aws_ssm_service_setting.default_host_management](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_service_setting) | resource |
+| [aws_caller_identity.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/caller_identity) | data source |
+| [aws_iam_policy_document.automation_kms](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
 | [aws_partition.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/partition) | data source |
 | [aws_region.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/region) | data source |
 
@@ -60,6 +64,7 @@
 | Name | Description |
 | ---- | ----------- |
 | <a name="output_association_ids"></a> [association\_ids](#output\_association\_ids) | IDs of custom State Manager associations keyed by settings.associations key |
+| <a name="output_automation_log_group_kms_key_arn"></a> [automation\_log\_group\_kms\_key\_arn](#output\_automation\_log\_group\_kms\_key\_arn) | ARN of the KMS key encrypting the module-created Automation log group (module-created or supplied through kms\_key\_id), or null when CloudWatch-managed encryption is used |
 | <a name="output_automation_log_group_name"></a> [automation\_log\_group\_name](#output\_automation\_log\_group\_name) | CloudWatch Logs group configured for Systems Manager Automation customer-script logging |
 | <a name="output_default_host_management_role_arn"></a> [default\_host\_management\_role\_arn](#output\_default\_host\_management\_role\_arn) | ARN of the module-created Default Host Management Configuration IAM role, or null when an existing role is used |
 | <a name="output_document_arns"></a> [document\_arns](#output\_document\_arns) | ARNs of customer-owned, tagged Systems Manager documents keyed by settings.documents key |

@@ -17,6 +17,11 @@ output "automation_log_group_name" {
   value       = local.automation_logging_enabled ? local.automation_log_group_name : null
 }
 
+output "automation_log_group_kms_key_arn" {
+  description = "ARN of the KMS key encrypting the module-created Automation log group (module-created or supplied through kms_key_id), or null when CloudWatch-managed encryption is used"
+  value       = local.automation_logging_create_log_group ? local.automation_log_group_kms_key_arn : null
+}
+
 output "inventory_association_id" {
   description = "ID of the AWS-GatherSoftwareInventory State Manager association"
   value       = try(aws_ssm_association.inventory[0].association_id, null)

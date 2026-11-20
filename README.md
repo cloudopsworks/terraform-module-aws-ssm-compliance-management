@@ -3,8 +3,7 @@
   ** 
   ** This file was automatically generated. 
   ** 1) Make all changes to `README.yaml` 
-  ** 2) Run `make init` (you only need to do this once)
-  ** 3) Run`make readme` to rebuild this file. 
+  ** 2) Run `tronador readme build` to rebuild this file.
   -->
 [![README Header][readme_header_img]][readme_header_link]
 
@@ -216,7 +215,10 @@ settings:
     create_log_group: true                       # Create the namespaced group; set false when another module owns log-group lifecycle. Default: true
     # log_group_name: /aws/ssm/compliance-management/automation/example # Created or pre-existing group name. Default uses the module-specific namespace shown here.
     retention_in_days: 365                       # CloudWatch retention when creating the group. Default: 365
-    # kms_key_id: null                           # Optional KMS key ARN for CloudWatch Logs encryption.
+    # kms_key_id: null                           # Optional existing KMS key ARN (not an alias) for CloudWatch Logs encryption.
+    # create_kms_key: false                      # Create a dedicated CMK (rotation on, prevent_destroy) scoped to the module-created group; needs create_log_group and no kms_key_id. Default: false
+    # kms_key_deletion_window_in_days: 30        # 7-30, used with create_kms_key. Default: 30
+    # kms_key_rotation_period_in_days: 365       # 90-2560, used with create_kms_key. Default: 365
     # skip_destroy: false                        # Retain the log group during destroy. Default: false
 
   # SSM document account controls (Security Hub SSM.4 and SSM.7).
@@ -424,6 +426,10 @@ settings:
   which is separate from the Session Manager module's `/aws/ssm/session-manager/audit-*` namespace.
   To reuse a centrally managed group instead, set `settings.automation_logging.create_log_group = false`
   and provide its name through `settings.automation_logging.log_group_name`.
+- `settings.automation_logging.create_kms_key = true` creates a customer managed key (rotation enabled,
+  `prevent_destroy`) whose policy lets CloudWatch Logs use it only for the module-created Automation log group.
+  Use it where NIST SP 800-53 AU-9 / SC-28 require customer managed encryption; supply `kms_key_id` instead to
+  reuse an existing key.
 - Maintenance Window `cloudwatch_log_group_name` overrides reference existing groups; this module only
   creates the Automation group controlled by `settings.automation_logging.create_log_group`.
 - Maintenance Window tasks support `RUN_COMMAND` documents. They default to the AWS-managed
@@ -510,7 +516,7 @@ Available targets:
 
 | Name | Version |
 | ---- | ------- |
-| <a name="provider_aws"></a> [aws](#provider\_aws) | ~> 6.35 |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.73.0 |
 
 ## Modules
 
@@ -529,6 +535,8 @@ Available targets:
 | [aws_iam_role_policy_attachment.default_host_management_additional](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
 | [aws_iam_role_policy_attachment.maintenance](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
 | [aws_iam_role_policy_attachment.maintenance_additional](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
+| [aws_kms_alias.automation](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/kms_alias) | resource |
+| [aws_kms_key.automation](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/kms_key) | resource |
 | [aws_ssm_association.inventory](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_association) | resource |
 | [aws_ssm_association.patch_scan](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_association) | resource |
 | [aws_ssm_association.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_association) | resource |
@@ -543,6 +551,8 @@ Available targets:
 | [aws_ssm_service_setting.automation_log_group](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_service_setting) | resource |
 | [aws_ssm_service_setting.block_public_document_sharing](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_service_setting) | resource |
 | [aws_ssm_service_setting.default_host_management](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_service_setting) | resource |
+| [aws_caller_identity.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/caller_identity) | data source |
+| [aws_iam_policy_document.automation_kms](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
 | [aws_partition.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/partition) | data source |
 | [aws_region.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/region) | data source |
 
@@ -561,6 +571,7 @@ Available targets:
 | Name | Description |
 | ---- | ----------- |
 | <a name="output_association_ids"></a> [association\_ids](#output\_association\_ids) | IDs of custom State Manager associations keyed by settings.associations key |
+| <a name="output_automation_log_group_kms_key_arn"></a> [automation\_log\_group\_kms\_key\_arn](#output\_automation\_log\_group\_kms\_key\_arn) | ARN of the KMS key encrypting the module-created Automation log group (module-created or supplied through kms\_key\_id), or null when CloudWatch-managed encryption is used |
 | <a name="output_automation_log_group_name"></a> [automation\_log\_group\_name](#output\_automation\_log\_group\_name) | CloudWatch Logs group configured for Systems Manager Automation customer-script logging |
 | <a name="output_default_host_management_role_arn"></a> [default\_host\_management\_role\_arn](#output\_default\_host\_management\_role\_arn) | ARN of the module-created Default Host Management Configuration IAM role, or null when an existing role is used |
 | <a name="output_document_arns"></a> [document\_arns](#output\_document\_arns) | ARNs of customer-owned, tagged Systems Manager documents keyed by settings.documents key |

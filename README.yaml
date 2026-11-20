@@ -192,7 +192,10 @@ usage: |-
       create_log_group: true                       # Create the namespaced group; set false when another module owns log-group lifecycle. Default: true
       # log_group_name: /aws/ssm/compliance-management/automation/example # Created or pre-existing group name. Default uses the module-specific namespace shown here.
       retention_in_days: 365                       # CloudWatch retention when creating the group. Default: 365
-      # kms_key_id: null                           # Optional KMS key ARN for CloudWatch Logs encryption.
+      # kms_key_id: null                           # Optional existing KMS key ARN (not an alias) for CloudWatch Logs encryption.
+      # create_kms_key: false                      # Create a dedicated CMK (rotation on, prevent_destroy) scoped to the module-created group; needs create_log_group and no kms_key_id. Default: false
+      # kms_key_deletion_window_in_days: 30        # 7-30, used with create_kms_key. Default: 30
+      # kms_key_rotation_period_in_days: 365       # 90-2560, used with create_kms_key. Default: 365
       # skip_destroy: false                        # Retain the log group during destroy. Default: false
 
     # SSM document account controls (Security Hub SSM.4 and SSM.7).
@@ -400,6 +403,10 @@ usage: |-
     which is separate from the Session Manager module's `/aws/ssm/session-manager/audit-*` namespace.
     To reuse a centrally managed group instead, set `settings.automation_logging.create_log_group = false`
     and provide its name through `settings.automation_logging.log_group_name`.
+  - `settings.automation_logging.create_kms_key = true` creates a customer managed key (rotation enabled,
+    `prevent_destroy`) whose policy lets CloudWatch Logs use it only for the module-created Automation log group.
+    Use it where NIST SP 800-53 AU-9 / SC-28 require customer managed encryption; supply `kms_key_id` instead to
+    reuse an existing key.
   - Maintenance Window `cloudwatch_log_group_name` overrides reference existing groups; this module only
     creates the Automation group controlled by `settings.automation_logging.create_log_group`.
   - Maintenance Window tasks support `RUN_COMMAND` documents. They default to the AWS-managed

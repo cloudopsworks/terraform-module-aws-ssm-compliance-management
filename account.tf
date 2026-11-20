@@ -34,8 +34,20 @@ locals {
     "/aws/ssm/compliance-management/automation/${local.system_name}"
   )
 
+  automation_log_group_kms_key_in = try(var.settings.automation_logging.kms_key_id, null)
+  automation_logging_create_kms_key = (
+    local.automation_logging_create_log_group &&
+    local.automation_log_group_kms_key_in == null &&
+    try(var.settings.automation_logging.create_kms_key, false)
+  )
+  automation_log_group_kms_key_arn = local.automation_logging_create_kms_key ? aws_kms_key.automation[0].arn : local.automation_log_group_kms_key_in
+  kms_deletion_window_days_default = 30
+  kms_rotation_period_days_default = 365
+
   block_public_document_sharing = try(var.settings.document_security.block_public_sharing, true)
 }
+
+data "aws_caller_identity" "current" {}
 
 resource "aws_iam_role" "default_host_management" {
   count = local.default_host_management_create_role ? 1 : 0
@@ -82,18 +94,81 @@ resource "aws_ssm_service_setting" "default_host_management" {
   ]
 }
 
+# Optional customer managed key for the module-created Automation log group (NIST AU-9 / SC-28).
+# The key policy only lets CloudWatch Logs use it for this one log group in this account.
+data "aws_iam_policy_document" "automation_kms" {
+  count = local.automation_logging_create_kms_key ? 1 : 0
+
+  statement {
+    sid       = "EnableAccountIamPolicies"
+    effect    = "Allow"
+    actions   = ["kms:*"]
+    resources = ["*"]
+    principals {
+      type        = "AWS"
+      identifiers = ["arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:root"]
+    }
+  }
+
+  statement {
+    sid       = "AllowCloudWatchLogsForAutomationLogGroup"
+    effect    = "Allow"
+    actions   = ["kms:Encrypt*", "kms:Decrypt*", "kms:ReEncrypt*", "kms:GenerateDataKey*", "kms:Describe*"]
+    resources = ["*"]
+    principals {
+      type        = "Service"
+      identifiers = ["logs.${data.aws_region.current.region}.${data.aws_partition.current.dns_suffix}"]
+    }
+    condition {
+      test     = "ArnEquals"
+      variable = "kms:EncryptionContext:aws:logs:arn"
+      values   = ["arn:${data.aws_partition.current.partition}:logs:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:log-group:${local.automation_log_group_name}"]
+    }
+  }
+}
+
+resource "aws_kms_key" "automation" {
+  count = local.automation_logging_create_kms_key ? 1 : 0
+
+  description             = "SSM Automation CloudWatch Logs encryption key"
+  deletion_window_in_days = try(var.settings.automation_logging.kms_key_deletion_window_in_days, local.kms_deletion_window_days_default)
+  enable_key_rotation     = true # Security Hub KMS.4
+  rotation_period_in_days = try(var.settings.automation_logging.kms_key_rotation_period_in_days, local.kms_rotation_period_days_default)
+  policy                  = data.aws_iam_policy_document.automation_kms[0].json
+  tags                    = local.all_tags
+
+  # Encrypted Automation logs become unreadable once the key is deleted.
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "aws_kms_alias" "automation" {
+  count = local.automation_logging_create_kms_key ? 1 : 0
+
+  name          = "alias/ssm-automation-logs-${local.system_name}"
+  target_key_id = aws_kms_key.automation[0].id
+}
+
 resource "aws_cloudwatch_log_group" "automation" {
   count = local.automation_logging_create_log_group ? 1 : 0
 
   name              = local.automation_log_group_name
   retention_in_days = try(var.settings.automation_logging.retention_in_days, 365)
-  kms_key_id        = try(var.settings.automation_logging.kms_key_id, null)
+  kms_key_id        = local.automation_log_group_kms_key_arn
   skip_destroy      = try(var.settings.automation_logging.skip_destroy, false)
   tags              = local.all_tags
 }
 
 resource "aws_ssm_service_setting" "automation_log_destination" {
   count = local.automation_logging_enabled ? 1 : 0
+
+  lifecycle {
+    precondition {
+      condition     = !try(var.settings.automation_logging.create_kms_key, false) || (local.automation_logging_create_log_group && local.automation_log_group_kms_key_in == null)
+      error_message = "settings.automation_logging.create_kms_key requires create_log_group = true and no kms_key_id (the key policy is scoped to the module-created log group)."
+    }
+  }
 
   setting_id    = "/ssm/automation/customer-script-log-destination"
   setting_value = "CloudWatch"
