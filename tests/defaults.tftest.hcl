@@ -307,8 +307,8 @@ run "automation_logs_module_cmk" {
   }
 
   assert {
-    condition     = length(aws_kms_key.automation) == 1 && aws_kms_key.automation[0].enable_key_rotation == true
-    error_message = "create_kms_key must create a rotating CMK."
+    condition     = length(aws_kms_key.automation) == 1 && aws_kms_key.automation[0].enable_key_rotation == true && aws_kms_key.automation[0].rotation_period_in_days == 90
+    error_message = "create_kms_key must create a CMK rotating every 90 days by default."
   }
 
   assert {
@@ -347,5 +347,23 @@ run "automation_logs_existing_key" {
   assert {
     condition     = length(aws_kms_key.automation) == 0 && aws_cloudwatch_log_group.automation[0].kms_key_id == "arn:aws:kms:us-east-1:123456789012:key/existing"
     error_message = "An existing kms_key_id must be used as-is."
+  }
+}
+
+run "automation_logs_cmk_rotation_period_adjustable" {
+  command = plan
+
+  variables {
+    settings = {
+      automation_logging = {
+        create_kms_key                  = true
+        kms_key_rotation_period_in_days = 180
+      }
+    }
+  }
+
+  assert {
+    condition     = aws_kms_key.automation[0].rotation_period_in_days == 180
+    error_message = "The CMK rotation period must be adjustable."
   }
 }

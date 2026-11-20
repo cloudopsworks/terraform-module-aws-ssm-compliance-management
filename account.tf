@@ -42,7 +42,7 @@ locals {
   )
   automation_log_group_kms_key_arn = local.automation_logging_create_kms_key ? aws_kms_key.automation[0].arn : local.automation_log_group_kms_key_in
   kms_deletion_window_days_default = 30
-  kms_rotation_period_days_default = 365
+  kms_rotation_period_days_default = 90 # Default cryptoperiod; adjustable through kms_key_rotation_period_in_days
 
   block_public_document_sharing = try(var.settings.document_security.block_public_sharing, true)
 }

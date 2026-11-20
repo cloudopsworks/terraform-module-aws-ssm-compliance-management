@@ -218,7 +218,7 @@ settings:
     # kms_key_id: null                           # Optional existing KMS key ARN (not an alias) for CloudWatch Logs encryption.
     # create_kms_key: false                      # Create a dedicated CMK (rotation on, prevent_destroy) scoped to the module-created group; needs create_log_group and no kms_key_id. Default: false
     # kms_key_deletion_window_in_days: 30        # 7-30, used with create_kms_key. Default: 30
-    # kms_key_rotation_period_in_days: 365       # 90-2560, used with create_kms_key. Default: 365
+    # kms_key_rotation_period_in_days: 90        # Rotation interval in days, 90-2560, used with create_kms_key. Default: 90
     # skip_destroy: false                        # Retain the log group during destroy. Default: false
 
   # SSM document account controls (Security Hub SSM.4 and SSM.7).
